@@ -1,0 +1,288 @@
+// ──────────────────────────────────────────
+// Emergency-Connect  –  Prisma Schema (Supabase PostgreSQL)
+// ──────────────────────────────────────────
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── Enums ──────────────────────────────
+enum user_role {
+  VICTIM
+  GUARDIAN
+}
+
+enum guardian_link_status {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
+enum invitation_status {
+  SENT
+  ACCEPTED
+  EXPIRED
+}
+
+enum second_factor_type {
+  QUESTION
+  OTP
+}
+
+enum message_type {
+  TEXT
+  FILE
+  SYSTEM
+}
+
+enum room_role {
+  VICTIM
+  GUARDIAN
+}
+
+enum notification_channel {
+  SMS
+  PUSH
+  EMAIL
+}
+
+enum notification_status {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum scam_risk_level {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum deletion_status {
+  REQUESTED
+  DONE
+}
+
+enum progress_status {
+  PENDING
+  DONE
+}
+
+// ── User ────────────────────────────────
+model User {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String?   @unique
+  passwordHash String?   @map("password_hash")
+  role         user_role
+  displayName  String?   @map("display_name")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  guardianLinksAsVictim GuardianLink[]   @relation("VictimLinks")
+  guardianLinksAsGuard  GuardianLink[]   @relation("GuardianLinks")
+  invitationsSent       Invitation[]
+  codeConfig            CodeConfig?
+  chatRoomsOwned        ChatRoom[]
+  roomMemberships       RoomMember[]
+  messagesSent          Message[]
+  filesOwned            FileObject[]
+  notifications         Notification[]
+  deletionRequests      DeletionRequest[]
+
+  @@map("User")
+}
+
+// ── GuardianLink (피해자-보호자 관계) ───
+model GuardianLink {
+  id            String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  victimId      String               @map("victim_id") @db.Uuid
+  guardianId    String?              @map("guardian_id") @db.Uuid
+  guardianPhone String               @map("guardian_phone") // AES-256-GCM encrypted
+  relationship  String
+  guardianAlias String?              @map("guardian_alias")
+  status        guardian_link_status @default(PENDING)
+  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  acceptedAt    DateTime?            @map("accepted_at") @db.Timestamptz
+
+  victim   User  @relation("VictimLinks", fields: [victimId], references: [id], onDelete: Cascade)
+  guardian User? @relation("GuardianLinks", fields: [guardianId], references: [id], onDelete: SetNull)
+
+  @@index([victimId])
+  @@index([guardianId])
+  @@map("GuardianLink")
+}
+
+// ── Invitation ──────────────────────────
+model Invitation {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  victimId      String            @map("victim_id") @db.Uuid
+  guardianPhone String            @map("guardian_phone") // AES-256-GCM encrypted
+  token         String            @unique
+  expiresAt     DateTime          @map("expires_at") @db.Timestamptz
+  status        invitation_status @default(SENT)
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz
+
+  victim User @relation(fields: [victimId], references: [id], onDelete: Cascade)
+
+  @@index([victimId])
+  @@index([token])
+  @@map("Invitation")
+}
+
+// ── CodeConfig (약속코드 설정) ───────────
+model CodeConfig {
+  id                     String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  victimId               String             @unique @map("victim_id") @db.Uuid
+  primaryPhraseHash      String             @map("primary_phrase_hash") // bcrypt hash
+  duressPhraseHash       String?            @map("duress_phrase_hash") // bcrypt hash
+  secondFactorType       second_factor_type @default(QUESTION) @map("second_factor_type")
+  secondFactorQuestion   String             @map("second_factor_question")
+  secondFactorAnswerHash String             @map("second_factor_answer_hash") // bcrypt hash
+  attemptsPerWindow      Int                @default(5) @map("attempts_per_window")
+  windowSeconds          Int                @default(300) @map("window_seconds")
+  lockSeconds            Int                @default(600) @map("lock_seconds")
+  rotateReminderDays     Int?               @map("rotate_reminder_days")
+
+  victim User @relation(fields: [victimId], references: [id], onDelete: Cascade)
+
+  @@map("CodeConfig")
+}
+
+// ── ChatRoom ────────────────────────────
+model ChatRoom {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  victimId  String   @map("victim_id") @db.Uuid
+  isDuress  Boolean  @default(false) @map("is_duress")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  victim        User           @relation(fields: [victimId], references: [id], onDelete: Cascade)
+  members       RoomMember[]
+  messages      Message[]
+  insights      AIInsight[]
+  notifications Notification[]
+
+  @@index([victimId])
+  @@map("ChatRoom")
+}
+
+// ── RoomMember ──────────────────────────
+model RoomMember {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roomId     String    @map("room_id") @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  roleInRoom room_role @map("role_in_room")
+
+  room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@index([roomId])
+  @@index([userId])
+  @@map("RoomMember")
+}
+
+// ── Message ─────────────────────────────
+model Message {
+  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roomId           String       @map("room_id") @db.Uuid
+  senderId         String       @map("sender_id") @db.Uuid
+  type             message_type
+  contentEncrypted String?      @map("content_encrypted") // AES-256-GCM encrypted
+  fileId           String?      @map("file_id") @db.Uuid
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  room   ChatRoom    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender User        @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  file   FileObject? @relation(fields: [fileId], references: [id], onDelete: SetNull)
+
+  @@index([roomId, createdAt])
+  @@index([senderId])
+  @@map("Message")
+}
+
+// ── FileObject ──────────────────────────
+model FileObject {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerId      String   @map("owner_id") @db.Uuid
+  storageKey   String   @unique @map("storage_key")
+  originalName String   @map("original_name")
+  mimeType     String   @map("mime_type")
+  size         Int
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  owner    User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([ownerId])
+  @@map("FileObject")
+}
+
+// ── AIInsight ───────────────────────────
+model AIInsight {
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roomId        String          @map("room_id") @db.Uuid
+  summaryText   String          @map("summary_text")
+  scamRiskLevel scam_risk_level @map("scam_risk_level")
+  scamSignals   Json            @default("[]") @map("scam_signals") @db.JsonB
+  actionGuide   Json            @default("[]") @map("action_guide") @db.JsonB
+  updatedAt     DateTime        @default(now()) @map("updated_at") @db.Timestamptz
+
+  room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+  @@map("AIInsight")
+}
+
+// ── Notification ────────────────────────
+model Notification {
+  id          String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String               @map("user_id") @db.Uuid
+  roomId      String?              @map("room_id") @db.Uuid
+  channel     notification_channel @default(SMS)
+  payload     Json                 @default("{}") @map("payload") @db.JsonB
+  status      notification_status  @default(PENDING)
+  attempts    Int                  @default(0)
+  nextRetryAt DateTime?            @map("next_retry_at") @db.Timestamptz
+  lastError   String?              @map("last_error")
+  createdAt   DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  sentAt      DateTime?            @map("sent_at") @db.Timestamptz
+
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room ChatRoom? @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextRetryAt])
+  @@index([userId])
+  @@map("Notification")
+}
+
+// ── DeletionRequest ─────────────────────
+model DeletionRequest {
+  id        String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  victimId  String          @map("victim_id") @db.Uuid
+  roomId    String?         @map("room_id")
+  status    deletion_status @default(REQUESTED)
+  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  doneAt    DateTime?       @map("done_at") @db.Timestamptz
+
+  victim User @relation(fields: [victimId], references: [id], onDelete: Cascade)
+
+  @@index([victimId])
+  @@map("DeletionRequest")
+}
+
+// ── ProgressCheck (actionGuide 체크 상태) ─
+model ProgressCheck {
+  id        String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roomId    String          @map("room_id") @db.Uuid
+  itemId    String          @map("item_id")
+  status    progress_status @default(PENDING)
+  userId    String          @map("user_id") @db.Uuid
+  updatedAt DateTime        @default(now()) @map("updated_at") @db.Timestamptz
+
+  @@unique([roomId, itemId, userId])
+  @@index([roomId])
+  @@map("ProgressCheck")
+}

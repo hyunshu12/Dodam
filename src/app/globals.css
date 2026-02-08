@@ -1,26 +1,57 @@
 @import "tailwindcss";
 
+/* ── DODAM Design Tokens ─────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-primary: #4F46E5;
+  --color-brand: #6861E9;
+  --color-bg-light: #F0EFFF;
+  --color-bg-white: #FFFFFF;
+  --color-bg-dark: #151515;
+  --color-text-primary: #000000;
+  --color-text-secondary: #505050;
+  --color-text-muted: #5F6368;
+  --color-text-placeholder: #848484;
+  --color-border: #E0E1E5;
+  --color-input-border: rgba(80, 80, 80, 0.5);
+  --radius-card: 18px;
+  --radius-input: 11px;
+  --radius-pill: 20px;
+  --radius-search: 50px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-primary: var(--color-primary);
+  --color-brand: var(--color-brand);
+  --color-bg-light: var(--color-bg-light);
+  --color-bg-dark: var(--color-bg-dark);
+  --font-sans: "DM Sans", "Inter", system-ui, sans-serif;
+  --font-body: "Inter", "DM Sans", system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* ── Base ──────────────────────────────────── */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "DM Sans", "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Utility classes ──────────────────────── */
+.font-heading {
+  font-family: "DM Sans", system-ui, sans-serif;
+}
+
+.font-body {
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+/* ── Scrollbar (chat) ─────────────────────── */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
 }
