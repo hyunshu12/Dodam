@@ -13,6 +13,7 @@ interface UserInfo {
 
 const TRANSPARENT_ROUTES = ["/", "/about"];
 const HIDDEN_ROUTES = ["/search"];
+const HIDDEN_PREFIXES = ["/room/"];
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -20,7 +21,9 @@ export default function Navbar() {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [checked, setChecked] = useState(false);
 
-  const isHidden = HIDDEN_ROUTES.includes(pathname);
+  const isHidden =
+    HIDDEN_ROUTES.includes(pathname) ||
+    HIDDEN_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
   useEffect(() => {
     if (isHidden) return;
