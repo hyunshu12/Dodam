@@ -12,6 +12,7 @@ import { errorResponse } from "./errors";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 const TOKEN_COOKIE = "ec-token";
+const EMERGENCY_COOKIE = "ec-emergency";
 const TOKEN_EXPIRY = "24h";
 
 export interface TokenPayload {
@@ -48,6 +49,11 @@ export function verifyToken(token: string): TokenPayload | null {
  * Set auth token as httpOnly cookie
  */
 export async function setAuthCookie(token: string) {
+  // #region agent log
+  const decoded = verifyToken(token);
+  console.log('[DEBUG][H1,H3] setAuthCookie called:', JSON.stringify({userId:decoded?.userId,role:decoded?.role,purpose:decoded?.purpose}));
+  fetch('http://127.0.0.1:7242/ingest/e9b5dedd-462b-4e37-895a-5212b39b1c11',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auth.ts:setAuthCookie',message:'Setting auth cookie',data:{userId:decoded?.userId,role:decoded?.role,purpose:decoded?.purpose},timestamp:Date.now(),hypothesisId:'H1,H3'})}).catch(()=>{});
+  // #endregion
   const cookieStore = await cookies();
   cookieStore.set(TOKEN_COOKIE, token, {
     httpOnly: true,
@@ -64,25 +70,73 @@ export async function setAuthCookie(token: string) {
 export async function clearAuthCookie() {
   const cookieStore = await cookies();
   cookieStore.delete(TOKEN_COOKIE);
+  cookieStore.delete(EMERGENCY_COOKIE);
 }
 
 /**
- * Get current session from request cookie
+ * Set emergency-only auth cookie (does NOT overwrite the main ec-token)
+ */
+export async function setEmergencyCookie(token: string) {
+  // #region agent log
+  const decoded = verifyToken(token);
+  console.log('[DEBUG][FIX] setEmergencyCookie called:', JSON.stringify({userId:decoded?.userId,role:decoded?.role}));
+  fetch('http://127.0.0.1:7242/ingest/e9b5dedd-462b-4e37-895a-5212b39b1c11',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auth.ts:setEmergencyCookie',message:'Setting EMERGENCY cookie (not overwriting main)',data:{userId:decoded?.userId,role:decoded?.role},timestamp:Date.now(),hypothesisId:'FIX'})}).catch(()=>{});
+  // #endregion
+  const cookieStore = await cookies();
+  cookieStore.set(EMERGENCY_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24, // 24h
+  });
+}
+
+/**
+ * Get current session from request cookie.
+ * By default checks main cookie first.
+ * When preferEmergency=true (set via X-Emergency-Session header),
+ * checks emergency cookie first — used by search page chat.
  */
 export async function getSession(
   request?: NextRequest
 ): Promise<TokenPayload | null> {
   let token: string | undefined;
+  let emergencyToken: string | undefined;
+  const preferEmergency = request?.headers.get("x-emergency-session") === "true";
 
   if (request) {
     token = request.cookies.get(TOKEN_COOKIE)?.value;
+    emergencyToken = request.cookies.get(EMERGENCY_COOKIE)?.value;
   } else {
     const cookieStore = await cookies();
     token = cookieStore.get(TOKEN_COOKIE)?.value;
+    emergencyToken = cookieStore.get(EMERGENCY_COOKIE)?.value;
   }
 
-  if (!token) return null;
-  return verifyToken(token);
+  if (preferEmergency) {
+    // Emergency-first: for search page chat
+    if (emergencyToken) {
+      const session = verifyToken(emergencyToken);
+      if (session) return session;
+    }
+    if (token) {
+      const session = verifyToken(token);
+      if (session) return session;
+    }
+  } else {
+    // Normal: main cookie first (guardian dashboard, etc.)
+    if (token) {
+      const session = verifyToken(token);
+      if (session) return session;
+    }
+    if (emergencyToken) {
+      const session = verifyToken(emergencyToken);
+      if (session) return session;
+    }
+  }
+
+  return null;
 }
 
 /**

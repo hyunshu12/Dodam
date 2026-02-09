@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Navbar from "@/components/ui/Navbar";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -24,7 +26,11 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (data.ok) {
-        router.push(data.data.role === "GUARDIAN" ? "/guardian" : "/search");
+        if (redirectTo) {
+          router.push(redirectTo);
+        } else {
+          router.push(data.data.role === "GUARDIAN" ? "/guardian" : "/search");
+        }
       } else {
         setError(data.error?.message || "로그인에 실패했습니다.");
       }

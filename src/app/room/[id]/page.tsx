@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, use } from "react";
+import { useState, useEffect, useRef, use, useCallback } from "react";
 
 interface Message {
   id: string;
@@ -16,6 +16,11 @@ interface Message {
   createdAt: string;
 }
 
+interface UrgencyInfo {
+  level: "EMERGENCY" | "CAUTION" | "SAFE";
+  reason: string;
+}
+
 const PRESETS = [
   { key: "HELP", label: "도움 요청" },
   { key: "SAFE", label: "안전합니다" },
@@ -24,6 +29,39 @@ const PRESETS = [
   { key: "MONEY_REQUEST", label: "돈 요구 중" },
   { key: "SUSPICIOUS_LINK", label: "의심 링크" },
 ];
+
+const URGENCY_CONFIG = {
+  EMERGENCY: {
+    label: "긴급",
+    bgColor: "bg-red-500",
+    textColor: "text-white",
+    borderColor: "border-red-400",
+    panelBg: "bg-red-500/10",
+    panelBorder: "border-red-500/30",
+    panelText: "text-red-400",
+    icon: "🚨",
+  },
+  CAUTION: {
+    label: "주의",
+    bgColor: "bg-yellow-500",
+    textColor: "text-black",
+    borderColor: "border-yellow-400",
+    panelBg: "bg-yellow-500/10",
+    panelBorder: "border-yellow-500/30",
+    panelText: "text-yellow-400",
+    icon: "⚠️",
+  },
+  SAFE: {
+    label: "안전",
+    bgColor: "bg-green-500",
+    textColor: "text-white",
+    borderColor: "border-green-400",
+    panelBg: "bg-green-500/10",
+    panelBorder: "border-green-500/30",
+    panelText: "text-green-400",
+    icon: "✅",
+  },
+};
 
 export default function RoomPage({
   params,
@@ -36,18 +74,28 @@ export default function RoomPage({
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    loadMessages();
-    const interval = setInterval(loadMessages, 3000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId]);
+  // Guardian urgency state
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [urgency, setUrgency] = useState<UrgencyInfo | null>(null);
+  const [urgencyLoading, setUrgencyLoading] = useState(false);
+  const lastMessageCountRef = useRef(0);
 
+  // Load current user role
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/me");
+        const data = await res.json();
+        if (data.ok) {
+          setUserRole(data.data.role);
+        }
+      } catch {
+        // ignore
+      }
+    })();
+  }, []);
 
-  async function loadMessages() {
+  const loadMessages = useCallback(async () => {
     try {
       const res = await fetch(`/api/rooms/${roomId}/messages`);
       const data = await res.json();
@@ -57,7 +105,43 @@ export default function RoomPage({
     } catch {
       // ignore
     }
-  }
+  }, [roomId]);
+
+  useEffect(() => {
+    loadMessages();
+    const interval = setInterval(loadMessages, 3000);
+    return () => clearInterval(interval);
+  }, [roomId, loadMessages]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Guardian: load urgency on first load + when new messages arrive
+  const loadUrgency = useCallback(async () => {
+    if (userRole !== "GUARDIAN") return;
+    setUrgencyLoading(true);
+    try {
+      const res = await fetch(`/api/rooms/${roomId}/urgency`);
+      const data = await res.json();
+      if (data.ok) {
+        setUrgency(data.data);
+      }
+    } catch {
+      // ignore
+    }
+    setUrgencyLoading(false);
+  }, [roomId, userRole]);
+
+  // Trigger urgency check when message count changes
+  useEffect(() => {
+    if (userRole !== "GUARDIAN") return;
+    const currentCount = messages.length;
+    if (currentCount !== lastMessageCountRef.current) {
+      lastMessageCountRef.current = currentCount;
+      loadUrgency();
+    }
+  }, [messages, userRole, loadUrgency]);
 
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault();
@@ -121,20 +205,56 @@ export default function RoomPage({
     e.target.value = "";
   }
 
+  const urgencyStyle = urgency ? URGENCY_CONFIG[urgency.level] : null;
+
   return (
     <div className="w-full h-screen bg-[var(--color-bg-dark)] flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-        <h2 className="font-heading font-bold text-white text-lg">
-          긴급 채팅
-        </h2>
-        <a
-          href="/guardian"
-          className="font-body font-semibold text-sm text-[var(--color-primary)] hover:text-[var(--color-brand)] transition-colors"
-        >
-          대시보드
-        </a>
+        <div className="flex items-center gap-3">
+          <h2 className="font-heading font-bold text-white text-lg">
+            긴급 채팅
+          </h2>
+          {/* Urgency badge (guardian only) */}
+          {userRole === "GUARDIAN" && urgency && urgencyStyle && (
+            <span
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${urgencyStyle.bgColor} ${urgencyStyle.textColor}`}
+            >
+              <span>{urgencyStyle.icon}</span>
+              {urgencyStyle.label}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          {userRole === "GUARDIAN" && (
+            <button
+              onClick={loadUrgency}
+              disabled={urgencyLoading}
+              className="font-body font-semibold text-xs text-white/50 hover:text-white/80 disabled:opacity-30 transition-colors"
+              title="긴급도 새로고침"
+            >
+              {urgencyLoading ? "분석중..." : "↻ 재분석"}
+            </button>
+          )}
+          <a
+            href="/guardian"
+            className="font-body font-semibold text-sm text-[var(--color-primary)] hover:text-[var(--color-brand)] transition-colors"
+          >
+            대시보드
+          </a>
+        </div>
       </div>
+
+      {/* Urgency detail panel (guardian only, when not SAFE) */}
+      {userRole === "GUARDIAN" && urgency && urgency.level !== "SAFE" && urgencyStyle && (
+        <div
+          className={`mx-6 mt-3 px-4 py-3 rounded-lg border ${urgencyStyle.panelBg} ${urgencyStyle.panelBorder}`}
+        >
+          <p className={`text-sm font-body font-semibold ${urgencyStyle.panelText}`}>
+            {urgencyStyle.icon} AI 분석: {urgency.reason}
+          </p>
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 scrollbar-thin">

@@ -73,12 +73,14 @@ enum progress_status {
 
 // ── User ────────────────────────────────
 model User {
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email        String?   @unique
-  passwordHash String?   @map("password_hash")
-  role         user_role
-  displayName  String?   @map("display_name")
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email          String?   @unique
+  passwordHash   String?   @map("password_hash")
+  role           user_role
+  displayName    String?   @map("display_name")
+  phone          String?   // AES-256-GCM encrypted
+  birthDate      DateTime? @map("birth_date") @db.Date
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   // Relations
   guardianLinksAsVictim GuardianLink[]   @relation("VictimLinks")
