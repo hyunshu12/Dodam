@@ -80,6 +80,9 @@ export default function RoomPage({
   const [urgencyLoading, setUrgencyLoading] = useState(false);
   const lastMessageCountRef = useRef(0);
 
+  // Emergency header for chat API calls (uses emergency cookie, not main auth)
+  const emergencyHeaders: HeadersInit = { "x-emergency-session": "true" };
+
   // Load current user role
   useEffect(() => {
     (async () => {
@@ -97,7 +100,9 @@ export default function RoomPage({
 
   const loadMessages = useCallback(async () => {
     try {
-      const res = await fetch(`/api/rooms/${roomId}/messages`);
+      const res = await fetch(`/api/rooms/${roomId}/messages`, {
+        headers: emergencyHeaders,
+      });
       const data = await res.json();
       if (data.ok) {
         setMessages(data.data.messages);
@@ -122,7 +127,9 @@ export default function RoomPage({
     if (userRole !== "GUARDIAN") return;
     setUrgencyLoading(true);
     try {
-      const res = await fetch(`/api/rooms/${roomId}/urgency`);
+      const res = await fetch(`/api/rooms/${roomId}/urgency`, {
+        headers: emergencyHeaders,
+      });
       const data = await res.json();
       if (data.ok) {
         setUrgency(data.data);
@@ -150,7 +157,7 @@ export default function RoomPage({
     try {
       await fetch(`/api/rooms/${roomId}/messages`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-emergency-session": "true" },
         body: JSON.stringify({ type: "TEXT", text }),
       });
       setText("");
@@ -166,7 +173,7 @@ export default function RoomPage({
     try {
       await fetch(`/api/rooms/${roomId}/messages`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-emergency-session": "true" },
         body: JSON.stringify({ presetKey }),
       });
       await loadMessages();
@@ -193,7 +200,7 @@ export default function RoomPage({
       if (uploadData.ok) {
         await fetch(`/api/rooms/${roomId}/messages`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "x-emergency-session": "true" },
           body: JSON.stringify({ type: "FILE", fileId: uploadData.data.id }),
         });
         await loadMessages();
