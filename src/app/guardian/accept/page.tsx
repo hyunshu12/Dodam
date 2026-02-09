@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Navbar from "@/components/ui/Navbar";
 
 type Status = "loading" | "not_logged_in" | "not_guardian" | "ready" | "accepting" | "success" | "error";
 
@@ -92,8 +91,6 @@ export default function GuardianAcceptPage() {
 
   return (
     <div className="relative w-full min-h-screen bg-[var(--color-bg-light)]">
-      <Navbar />
-
       <div className="flex items-center justify-center min-h-screen px-6 pt-20">
         <div className="w-full max-w-[540px] bg-white rounded-[18px] shadow-xl p-10">
           <h2 className="font-heading font-bold text-2xl text-black mb-2">

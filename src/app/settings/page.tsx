@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Navbar from "@/components/ui/Navbar";
+import Link from "next/link";
 
 interface Guardian {
   id: string;
@@ -147,18 +147,17 @@ export default function SettingsPage() {
   if (!user) {
     return (
       <div className="relative w-full min-h-screen bg-[var(--color-bg-light)]">
-        <Navbar />
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
             <p className="font-body text-[#505050] text-lg mb-4">
               로그인이 필요합니다.
             </p>
-            <a
+            <Link
               href="/login"
               className="inline-block px-8 py-3 rounded-[11px] bg-[var(--color-primary)] text-white font-heading font-bold hover:opacity-90"
             >
               로그인
-            </a>
+            </Link>
           </div>
         </div>
       </div>
@@ -172,9 +171,7 @@ export default function SettingsPage() {
 
   return (
     <div className="relative w-full min-h-screen bg-[var(--color-bg-light)]">
-      <Navbar />
-
-      <div className="max-w-3xl mx-auto px-6 pt-28 pb-12 space-y-8">
+      <div className="max-w-3xl mx-auto px-6 pt-28 pb-12 space-y-8 reveal">
         {/* Header */}
         <div className="flex justify-between items-center">
           <h1 className="font-heading font-bold text-3xl text-black">설정</h1>

@@ -44,6 +44,53 @@ body {
   font-family: "Inter", system-ui, sans-serif;
 }
 
+/* ── Reveal Animations (Vercel-style) ────── */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+@keyframes slideRight {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+}
+
+.reveal {
+  animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.reveal-delay-1 { animation-delay: 0.08s; }
+.reveal-delay-2 { animation-delay: 0.15s; }
+.reveal-delay-3 { animation-delay: 0.22s; }
+.reveal-delay-4 { animation-delay: 0.3s; }
+.reveal-delay-5 { animation-delay: 0.38s; }
+
+.reveal-fade {
+  animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.reveal-scale {
+  animation: scaleIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.reveal-slide {
+  animation: slideRight 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 /* ── Scrollbar (chat) ─────────────────────── */
 .scrollbar-thin::-webkit-scrollbar {
   width: 6px;

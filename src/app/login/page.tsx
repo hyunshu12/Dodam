@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Navbar from "@/components/ui/Navbar";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -42,21 +42,19 @@ export default function LoginPage() {
 
   return (
     <div className="relative w-full min-h-screen bg-[var(--color-bg-light)]">
-      <Navbar />
-
       <div className="flex items-center justify-center min-h-screen px-6 pt-20">
-        <div className="w-full max-w-[1620px] min-h-[690px] rounded-[18px] overflow-hidden flex flex-col md:flex-row shadow-xl">
+        <div className="w-full max-w-[1620px] min-h-[690px] rounded-[18px] overflow-hidden flex flex-col md:flex-row shadow-xl reveal-scale">
           {/* Left branding */}
           <div className="w-full md:w-[810px] bg-[var(--color-primary)] flex flex-col items-center justify-center p-10 min-h-[300px] md:min-h-0">
             <h2
-              className="font-heading font-bold text-white text-center leading-[1.2]"
+              className="font-heading font-bold text-white text-center leading-[1.2] reveal reveal-delay-1"
               style={{ fontSize: "clamp(40px, 5vw, 80px)" }}
             >
               Welcome
               <br />
               Back
             </h2>
-            <p className="font-heading font-bold text-white text-center text-xl md:text-3xl mt-8">
+            <p className="font-heading font-bold text-white text-center text-lg md:text-3xl mt-8 reveal reveal-delay-2">
               다시 돌아오신 것을 환영합니다
             </p>
           </div>
@@ -131,12 +129,12 @@ export default function LoginPage() {
 
               <p className="text-center text-sm text-[#505050]/70">
                 계정이 없나요?{" "}
-                <a
+                <Link
                   href="/signup"
                   className="text-[var(--color-primary)] font-semibold hover:underline"
                 >
                   회원가입
-                </a>
+                </Link>
               </p>
             </form>
           </div>

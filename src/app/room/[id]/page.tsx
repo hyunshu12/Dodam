@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, use, useCallback } from "react";
+import Link from "next/link";
 
 interface Message {
   id: string;
@@ -243,12 +244,12 @@ export default function RoomPage({
               {urgencyLoading ? "분석중..." : "↻ 재분석"}
             </button>
           )}
-          <a
+          <Link
             href="/guardian"
             className="font-body font-semibold text-sm text-[var(--color-primary)] hover:text-[var(--color-brand)] transition-colors"
           >
             대시보드
-          </a>
+          </Link>
         </div>
       </div>
 

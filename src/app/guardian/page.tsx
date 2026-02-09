@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Navbar from "@/components/ui/Navbar";
 
 interface RoomSummary {
   roomId: string;
@@ -124,7 +123,6 @@ export default function GuardianPage() {
   if (loading) {
     return (
       <div className="relative w-full min-h-screen bg-[var(--color-bg-light)]">
-        <Navbar />
         <div className="flex items-center justify-center min-h-screen">
           <p className="font-body text-[#505050]">불러오는 중...</p>
         </div>
@@ -134,9 +132,7 @@ export default function GuardianPage() {
 
   return (
     <div className="relative w-full min-h-screen bg-[var(--color-bg-light)]">
-      <Navbar />
-
-      <div className="max-w-7xl mx-auto px-6 pt-28 pb-12">
+      <div className="max-w-7xl mx-auto px-6 pt-28 pb-12 reveal">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Room list */}
           <div className="space-y-3">
