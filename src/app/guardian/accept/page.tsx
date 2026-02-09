@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 type Status = "loading" | "not_logged_in" | "not_guardian" | "ready" | "accepting" | "success" | "error";
 
-export default function GuardianAcceptPage() {
+function GuardianAcceptContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") || "";
@@ -224,5 +224,21 @@ export default function GuardianAcceptPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function GuardianAcceptPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="relative w-full min-h-screen bg-[var(--color-bg-light)]">
+          <div className="flex items-center justify-center min-h-screen">
+            <p className="font-body text-[#505050]">로딩 중...</p>
+          </div>
+        </div>
+      }
+    >
+      <GuardianAcceptContent />
+    </Suspense>
   );
 }
