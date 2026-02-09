@@ -35,6 +35,11 @@ export default function SignupPage() {
   // Step 3 (GUARDIAN): Invite token
   const [inviteToken, setInviteToken] = useState("");
 
+  // Demo: show generated invite token after signup
+  const [generatedToken, setGeneratedToken] = useState("");
+  const [tokenCopied, setTokenCopied] = useState(false);
+  const [signupComplete, setSignupComplete] = useState(false);
+
   // ── Step 1 → Step 2 ─────────────────────
   function handleStep1Next(e: React.FormEvent) {
     e.preventDefault();
@@ -150,7 +155,7 @@ export default function SignupPage() {
         // Invite guardian if info provided
         if (guardianPhone.trim()) {
           try {
-            await fetch("/api/victim/guardians/invite", {
+            const inviteRes = await fetch("/api/victim/guardians/invite", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -159,6 +164,14 @@ export default function SignupPage() {
                 alias: guardianName.trim() || undefined,
               }),
             });
+            const inviteData = await inviteRes.json();
+            if (inviteData.ok && inviteData.data?.token) {
+              // Demo mode: show token on screen
+              setGeneratedToken(inviteData.data.token);
+              setSignupComplete(true);
+              setLoading(false);
+              return; // Don't redirect yet — show token first
+            }
           } catch {
             console.warn("보호자 초대 요청 실패 (가입은 완료됨)");
           }
@@ -270,6 +283,119 @@ export default function SignupPage() {
   }
 
   const panel = getBrandingPanelContent();
+
+  // ── Copy token to clipboard ────────────
+  async function handleCopyToken() {
+    try {
+      await navigator.clipboard.writeText(generatedToken);
+      setTokenCopied(true);
+      setTimeout(() => setTokenCopied(false), 2000);
+    } catch {
+      // Fallback: select text
+      const el = document.getElementById("demo-token-display");
+      if (el) {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+      }
+    }
+  }
+
+  // ── Copy invite link to clipboard ────────────
+  async function handleCopyLink() {
+    const link = `${window.location.origin}/guardian/accept?token=${generatedToken}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setTokenCopied(true);
+      setTimeout(() => setTokenCopied(false), 2000);
+    } catch {
+      // Fallback
+    }
+  }
+
+  // ── Demo: Token display screen after signup ──
+  if (signupComplete && generatedToken) {
+    return (
+      <div className="relative w-full min-h-screen bg-[var(--color-bg-light)]">
+        <div className="flex items-center justify-center min-h-screen px-6 pt-20">
+          <div className="w-full max-w-[720px] rounded-[18px] overflow-hidden shadow-xl reveal-scale bg-white p-8 md:p-14">
+            {/* Success icon */}
+            <div className="flex justify-center mb-6">
+              <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+            </div>
+
+            <h3 className="font-heading font-bold text-2xl text-black text-center mb-2">
+              회원가입 완료!
+            </h3>
+            <p className="font-body text-[#505050]/70 text-sm text-center mb-8">
+              보호자 초대가 생성되었습니다. 아래 토큰을 보호자에게 전달해주세요.
+            </p>
+
+            {/* Token display */}
+            <div className="bg-[var(--color-bg-light)] rounded-[11px] border-2 border-dashed border-[var(--color-primary)]/30 p-6 mb-4">
+              <label className="font-body font-semibold text-xs text-[#505050]/60 uppercase tracking-wider mb-2 block">
+                보호자 초대 토큰 (DEMO)
+              </label>
+              <div
+                id="demo-token-display"
+                className="font-mono text-lg text-[var(--color-primary)] font-bold break-all select-all leading-relaxed"
+              >
+                {generatedToken}
+              </div>
+            </div>
+
+            {/* Copy buttons */}
+            <div className="flex gap-3 mb-6">
+              <button
+                type="button"
+                onClick={handleCopyToken}
+                className="flex-1 h-[46px] rounded-[11px] border-2 border-[var(--color-primary)] text-[var(--color-primary)] font-heading font-bold text-sm hover:bg-[var(--color-primary)]/5 transition-colors flex items-center justify-center gap-2"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                  <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                </svg>
+                {tokenCopied ? "복사됨!" : "토큰 복사"}
+              </button>
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="flex-1 h-[46px] rounded-[11px] border-2 border-[var(--color-primary)] text-[var(--color-primary)] font-heading font-bold text-sm hover:bg-[var(--color-primary)]/5 transition-colors flex items-center justify-center gap-2"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+                  <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+                </svg>
+                {tokenCopied ? "복사됨!" : "초대 링크 복사"}
+              </button>
+            </div>
+
+            {/* Info box */}
+            <div className="px-4 py-3 rounded-[11px] bg-amber-50 border border-amber-200 mb-6">
+              <p className="text-amber-700 text-sm font-body">
+                <span className="font-semibold">데모 안내:</span> 실제 서비스에서는 SMS로 자동 전송됩니다. 데모에서는 이 토큰을 보호자에게 직접 전달하세요. 보호자는 회원가입 시 이 토큰을 입력하면 연결됩니다.
+              </p>
+            </div>
+
+            {/* Continue button */}
+            <button
+              type="button"
+              onClick={() => router.push("/settings")}
+              className="w-full h-[50px] rounded-[11px] bg-[var(--color-primary)] text-white font-heading font-bold text-lg hover:opacity-90 transition-opacity"
+            >
+              설정 페이지로 이동
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full min-h-screen bg-[var(--color-bg-light)]">
