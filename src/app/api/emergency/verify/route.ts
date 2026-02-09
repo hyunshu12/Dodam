@@ -117,10 +117,6 @@ export async function POST(request: NextRequest) {
     });
 
     // Set emergency cookie (does NOT overwrite main auth cookie)
-    // #region agent log
-    console.log('[DEBUG][FIX] emergency/verify setting EMERGENCY cookie (not overwriting main):', JSON.stringify({victimId:payload.victimId,isDuress}));
-    fetch('http://127.0.0.1:7242/ingest/e9b5dedd-462b-4e37-895a-5212b39b1c11',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'emergency/verify/route.ts:setEmergencyCookie',message:'Setting emergency cookie (not overwriting main)',data:{victimId:payload.victimId,isDuress},timestamp:Date.now(),hypothesisId:'FIX'})}).catch(()=>{});
-    // #endregion
     const authToken = signToken({
       userId: payload.victimId,
       role: "VICTIM",

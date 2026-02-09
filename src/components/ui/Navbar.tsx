@@ -20,8 +20,28 @@ export default function Navbar() {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [checked, setChecked] = useState(false);
 
+  const isHidden = HIDDEN_ROUTES.includes(pathname);
+
+  useEffect(() => {
+    if (isHidden) return;
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/me", { cache: "no-store" });
+        const data = await res.json();
+        if (data.ok && data.data) {
+          setUser(data.data);
+        } else {
+          setUser(null);
+        }
+      } catch {
+        setUser(null);
+      }
+      setChecked(true);
+    })();
+  }, [pathname, isHidden]);
+
   // Hide navbar entirely on disguised pages (e.g. /search)
-  if (HIDDEN_ROUTES.includes(pathname)) return null;
+  if (isHidden) return null;
 
   const isTransparent = TRANSPARENT_ROUTES.includes(pathname);
   const logoColor = isTransparent
@@ -30,21 +50,6 @@ export default function Navbar() {
   const linkColor = isTransparent
     ? "text-white/70 hover:text-white"
     : "text-[#505050]/70 hover:text-[#505050]";
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/auth/me");
-        const data = await res.json();
-        if (data.ok && data.data) {
-          setUser(data.data);
-        }
-      } catch {
-        // Not logged in
-      }
-      setChecked(true);
-    })();
-  }, []);
 
   async function handleLogout() {
     try {
