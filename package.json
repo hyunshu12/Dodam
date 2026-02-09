@@ -8,8 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare build && node scripts/strip-og.js && opennextjs-cloudflare deploy -- --keep-vars",
-    "deploy:skip-build": "node scripts/strip-og.js && opennextjs-cloudflare deploy -- --keep-vars",
+    "deploy": "node scripts/strip-prisma.js && opennextjs-cloudflare build && node scripts/strip-og.js && opennextjs-cloudflare deploy -- --keep-vars",
+    "deploy:skip-build": "node scripts/strip-prisma.js && node scripts/strip-og.js && opennextjs-cloudflare deploy -- --keep-vars",
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
@@ -21,12 +21,12 @@
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.2.4",
     "jsonwebtoken": "^9.0.3",
-    "next": "^15.5.12",
+    "next": "^16.1.6",
     "openai": "^6.18.0",
     "pg": "^8.18.0",
     "prisma": "^7.3.0",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
@@ -38,7 +38,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "^15.5.12",
+    "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
     "typescript": "^5",
     "wrangler": "^4.63.0"
