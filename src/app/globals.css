@@ -91,6 +91,12 @@ body {
   animation: slideRight 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* ── Chat message rendering optimization (Rule 6.2) ─── */
+.chat-message-item {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 64px;
+}
+
 /* ── Scrollbar (chat) ─────────────────────── */
 .scrollbar-thin::-webkit-scrollbar {
   width: 6px;

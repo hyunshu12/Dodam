@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 
 interface SearchResult {
   title: string;
@@ -50,6 +50,10 @@ function fakeTitle(msg: Message): string {
   return `${name} - ${time}`;
 }
 
+// Hoisted outside component to avoid re-creation (Rule 5.4, 6.3)
+const EMERGENCY_HEADERS: HeadersInit = { "x-emergency-session": "true" };
+const SEND_HEADERS: HeadersInit = { "Content-Type": "application/json", "x-emergency-session": "true" };
+
 export default function SearchPage() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -69,15 +73,14 @@ export default function SearchPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevMessageCountRef = useRef(0);
 
-  // Emergency header for chat API calls (uses emergency cookie, not main auth)
-  const emergencyHeaders: HeadersInit = { "x-emergency-session": "true" };
+  // emergencyHeaders hoisted to module scope as EMERGENCY_HEADERS
 
   // ─── Message polling (chat mode only) ───
   const loadMessages = useCallback(async () => {
     if (!roomId) return;
     try {
       const res = await fetch(`/api/rooms/${roomId}/messages`, {
-        headers: emergencyHeaders,
+        headers: EMERGENCY_HEADERS,
       });
       const data = await res.json();
       if (data.ok) {
@@ -109,7 +112,7 @@ export default function SearchPage() {
     (async () => {
       try {
         const res = await fetch("/api/auth/me", {
-          headers: emergencyHeaders,
+          headers: EMERGENCY_HEADERS,
         });
         const data = await res.json();
         if (data.ok) setMyUserId(data.data.id);
@@ -207,7 +210,7 @@ export default function SearchPage() {
     try {
       await fetch(`/api/rooms/${roomId}/messages`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-emergency-session": "true" },
+        headers: SEND_HEADERS,
         body: JSON.stringify({ type: "TEXT", text }),
       });
       await loadMessages();
@@ -226,7 +229,7 @@ export default function SearchPage() {
     try {
       await fetch(`/api/rooms/${roomId}/messages`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-emergency-session": "true" },
+        headers: SEND_HEADERS,
         body: JSON.stringify({ presetKey: preset.key }),
       });
       await loadMessages();
@@ -236,9 +239,13 @@ export default function SearchPage() {
     setLoading(false);
   }
 
-  // ─── Messages sorted chronologically for interleaved display ───
-  const sortedMessages = [...messages].sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  // ─── Messages sorted chronologically for interleaved display (Rule 7.12: toSorted) ───
+  const sortedMessages = useMemo(
+    () =>
+      [...messages].sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      ),
+    [messages]
   );
 
   return (

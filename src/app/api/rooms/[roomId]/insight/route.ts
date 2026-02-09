@@ -17,18 +17,19 @@ export async function GET(
 
     const { roomId } = await params;
 
-    // Check membership
-    const member = await prisma.roomMember.findUnique({
-      where: { roomId_userId: { roomId, userId: result.user.id } },
-    });
+    // Check membership + fetch insight in parallel (Rule 1.4: Promise.all)
+    const [member, insight] = await Promise.all([
+      prisma.roomMember.findUnique({
+        where: { roomId_userId: { roomId, userId: result.user.id } },
+      }),
+      prisma.aIInsight.findFirst({
+        where: { roomId },
+        orderBy: { updatedAt: "desc" },
+      }),
+    ]);
     if (!member) {
       return errorResponse("Not a member of this room", 403, "FORBIDDEN");
     }
-
-    const insight = await prisma.aIInsight.findFirst({
-      where: { roomId },
-      orderBy: { updatedAt: "desc" },
-    });
 
     if (!insight) {
       return successResponse({ hasInsight: false });

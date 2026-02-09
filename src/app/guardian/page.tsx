@@ -52,28 +52,21 @@ export default function GuardianPage() {
     setSelectedRoom(roomId);
     setInsight(null);
 
-    try {
-      const res = await fetch(`/api/rooms/${roomId}/insight`);
-      const data = await res.json();
-      if (data.ok && data.data.hasInsight) {
-        setInsight(data.data);
-      }
-    } catch {
-      // ignore
-    }
+    // Fetch insight + progress in parallel (Rule 1.4: Promise.all)
+    const [insightRes, progressRes] = await Promise.all([
+      fetch(`/api/rooms/${roomId}/insight`).then((r) => r.json()).catch(() => null),
+      fetch(`/api/rooms/${roomId}/progress`).then((r) => r.json()).catch(() => null),
+    ]);
 
-    try {
-      const res = await fetch(`/api/rooms/${roomId}/progress`);
-      const data = await res.json();
-      if (data.ok) {
-        const map: Record<string, string> = {};
-        for (const p of data.data) {
-          map[p.itemId] = p.status;
-        }
-        setProgressMap(map);
+    if (insightRes?.ok && insightRes.data.hasInsight) {
+      setInsight(insightRes.data);
+    }
+    if (progressRes?.ok) {
+      const map: Record<string, string> = {};
+      for (const p of progressRes.data) {
+        map[p.itemId] = p.status;
       }
-    } catch {
-      // ignore
+      setProgressMap(map);
     }
   }
 
@@ -105,7 +98,8 @@ export default function GuardianPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ itemId, status: next }),
       });
-      setProgressMap({ ...progressMap, [itemId]: next });
+      // Functional setState to avoid stale closure (Rule 5.9)
+      setProgressMap((prev) => ({ ...prev, [itemId]: next }));
     } catch {
       // ignore
     }

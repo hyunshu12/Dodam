@@ -23,29 +23,29 @@ export async function POST(request: NextRequest) {
     const token = uuid();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-    // Create invitation
-    const invitation = await prisma.invitation.create({
-      data: {
-        victimId,
-        guardianPhone: encryptedPhone,
-        token,
-        expiresAt,
-        status: "SENT",
-      },
-    });
+    // Create invitation + guardian link in parallel (Rule 1.4: Promise.all)
+    const [invitation] = await Promise.all([
+      prisma.invitation.create({
+        data: {
+          victimId,
+          guardianPhone: encryptedPhone,
+          token,
+          expiresAt,
+          status: "SENT",
+        },
+      }),
+      prisma.guardianLink.create({
+        data: {
+          victimId,
+          guardianPhone: encryptedPhone,
+          relationship,
+          guardianAlias: alias || null,
+          status: "PENDING",
+        },
+      }),
+    ]);
 
-    // Create guardian link (PENDING, guardianId is null until accepted)
-    await prisma.guardianLink.create({
-      data: {
-        victimId,
-        guardianPhone: encryptedPhone,
-        relationship,
-        guardianAlias: alias || null,
-        status: "PENDING",
-      },
-    });
-
-    // Send SMS notification (attempt immediate)
+    // Send SMS notification (attempt immediate, non-blocking for response)
     await createAndSendNotification({
       userId: victimId, // tracked under victim for now
       channel: "SMS",

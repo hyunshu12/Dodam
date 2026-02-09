@@ -31,6 +31,10 @@ const PRESETS = [
   { key: "SUSPICIOUS_LINK", label: "의심 링크" },
 ];
 
+// Hoisted outside component to avoid re-creation (Rule 5.4, 6.3)
+const EMERGENCY_HEADERS: HeadersInit = { "x-emergency-session": "true" };
+const SEND_HEADERS: HeadersInit = { "Content-Type": "application/json", "x-emergency-session": "true" };
+
 const URGENCY_CONFIG = {
   EMERGENCY: {
     label: "긴급",
@@ -81,8 +85,7 @@ export default function RoomPage({
   const [urgencyLoading, setUrgencyLoading] = useState(false);
   const lastMessageCountRef = useRef(0);
 
-  // Emergency header for chat API calls (uses emergency cookie, not main auth)
-  const emergencyHeaders: HeadersInit = { "x-emergency-session": "true" };
+  // emergencyHeaders hoisted to module scope as EMERGENCY_HEADERS
 
   // Load current user role
   useEffect(() => {
@@ -102,7 +105,7 @@ export default function RoomPage({
   const loadMessages = useCallback(async () => {
     try {
       const res = await fetch(`/api/rooms/${roomId}/messages`, {
-        headers: emergencyHeaders,
+        headers: EMERGENCY_HEADERS,
       });
       const data = await res.json();
       if (data.ok) {
@@ -129,7 +132,7 @@ export default function RoomPage({
     setUrgencyLoading(true);
     try {
       const res = await fetch(`/api/rooms/${roomId}/urgency`, {
-        headers: emergencyHeaders,
+        headers: EMERGENCY_HEADERS,
       });
       const data = await res.json();
       if (data.ok) {
@@ -158,7 +161,7 @@ export default function RoomPage({
     try {
       await fetch(`/api/rooms/${roomId}/messages`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-emergency-session": "true" },
+        headers: SEND_HEADERS,
         body: JSON.stringify({ type: "TEXT", text }),
       });
       setText("");
@@ -174,7 +177,7 @@ export default function RoomPage({
     try {
       await fetch(`/api/rooms/${roomId}/messages`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-emergency-session": "true" },
+        headers: SEND_HEADERS,
         body: JSON.stringify({ presetKey }),
       });
       await loadMessages();
@@ -201,7 +204,7 @@ export default function RoomPage({
       if (uploadData.ok) {
         await fetch(`/api/rooms/${roomId}/messages`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "x-emergency-session": "true" },
+          headers: SEND_HEADERS,
           body: JSON.stringify({ type: "FILE", fileId: uploadData.data.id }),
         });
         await loadMessages();
@@ -269,11 +272,11 @@ export default function RoomPage({
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={
+            className={`chat-message-item ${
               msg.type === "SYSTEM"
                 ? "text-center"
                 : "flex flex-col"
-            }
+            }`}
           >
             {msg.type === "SYSTEM" ? (
               <p className="text-[var(--color-text-placeholder)] text-sm font-body">

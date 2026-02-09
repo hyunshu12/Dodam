@@ -19,22 +19,22 @@ export async function POST(
 
     const { roomId } = await params;
 
-    // Check membership
-    const member = await prisma.roomMember.findUnique({
-      where: { roomId_userId: { roomId, userId: result.user.id } },
-    });
+    // Check membership + fetch messages in parallel (Rule 1.4: Promise.all)
+    const [member, messages] = await Promise.all([
+      prisma.roomMember.findUnique({
+        where: { roomId_userId: { roomId, userId: result.user.id } },
+      }),
+      prisma.message.findMany({
+        where: { roomId },
+        orderBy: { createdAt: "asc" },
+        include: {
+          sender: { select: { role: true, displayName: true } },
+        },
+      }),
+    ]);
     if (!member) {
       return errorResponse("Not a member of this room", 403, "FORBIDDEN");
     }
-
-    // Get all messages in the room
-    const messages = await prisma.message.findMany({
-      where: { roomId },
-      orderBy: { createdAt: "asc" },
-      include: {
-        sender: { select: { role: true, displayName: true } },
-      },
-    });
 
     if (messages.length === 0) {
       return errorResponse("No messages to analyze", 400, "NO_MESSAGES");

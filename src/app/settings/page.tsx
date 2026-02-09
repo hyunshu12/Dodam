@@ -51,13 +51,22 @@ export default function SettingsPage() {
       if (data.ok) {
         setUser(data.data);
         if (data.data.role === "VICTIM") {
-          loadGuardians();
-          loadCodeConfig();
+          // Fetch guardians + code config in parallel (Rule 1.4: Promise.all)
+          loadVictimData();
         }
       }
     } catch {
       // not logged in
     }
+  }
+
+  async function loadVictimData() {
+    const [guardiansRes, codeConfigRes] = await Promise.all([
+      fetch("/api/victim/guardians").then((r) => r.json()).catch(() => null),
+      fetch("/api/victim/code-config").then((r) => r.json()).catch(() => null),
+    ]);
+    if (guardiansRes?.ok) setGuardians(guardiansRes.data);
+    if (codeConfigRes?.ok) setCodeConfig(codeConfigRes.data);
   }
 
   async function loadGuardians() {

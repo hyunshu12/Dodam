@@ -20,23 +20,23 @@ export async function GET(
 
     const { roomId } = await params;
 
-    // Check membership
-    const member = await prisma.roomMember.findUnique({
-      where: { roomId_userId: { roomId, userId: result.user.id } },
-    });
+    // Check membership + fetch messages in parallel (Rule 1.4: Promise.all)
+    const [member, messages] = await Promise.all([
+      prisma.roomMember.findUnique({
+        where: { roomId_userId: { roomId, userId: result.user.id } },
+      }),
+      prisma.message.findMany({
+        where: { roomId },
+        orderBy: { createdAt: "desc" },
+        take: 30,
+        include: {
+          sender: { select: { role: true, displayName: true } },
+        },
+      }),
+    ]);
     if (!member) {
       return errorResponse("Not a member of this room", 403, "FORBIDDEN");
     }
-
-    // Get recent messages (last 30 for urgency check - lightweight)
-    const messages = await prisma.message.findMany({
-      where: { roomId },
-      orderBy: { createdAt: "desc" },
-      take: 30,
-      include: {
-        sender: { select: { role: true, displayName: true } },
-      },
-    });
 
     if (messages.length === 0) {
       return successResponse({

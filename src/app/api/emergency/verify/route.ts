@@ -57,37 +57,41 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Add victim as member
-    await prisma.roomMember.create({
-      data: {
-        roomId: room.id,
-        userId: payload.victimId,
-        roleInRoom: "VICTIM",
-      },
-    });
+    // Add victim as member + fetch guardians in parallel (Rule 1.4: Promise.all)
+    const [, guardianLinks] = await Promise.all([
+      prisma.roomMember.create({
+        data: {
+          roomId: room.id,
+          userId: payload.victimId,
+          roleInRoom: "VICTIM",
+        },
+      }),
+      prisma.guardianLink.findMany({
+        where: {
+          victimId: payload.victimId,
+          status: "ACTIVE",
+          guardianId: { not: null },
+        },
+      }),
+    ]);
 
-    // Add all active guardians as members
-    const guardianLinks = await prisma.guardianLink.findMany({
-      where: {
-        victimId: payload.victimId,
-        status: "ACTIVE",
-        guardianId: { not: null },
-      },
-    });
+    // Add system message + guardian members in parallel
+    const systemMsg = isDuress
+      ? "⚠️ 긴급 채팅방이 생성되었습니다. (듀레스 코드로 진입)"
+      : "🚨 긴급 채팅방이 생성되었습니다.";
 
-    for (const link of guardianLinks) {
-      if (link.guardianId) {
-        await prisma.roomMember.create({
+    const guardianOps = guardianLinks
+      .filter((link) => link.guardianId)
+      .flatMap((link) => [
+        prisma.roomMember.create({
           data: {
             roomId: room.id,
-            userId: link.guardianId,
+            userId: link.guardianId!,
             roleInRoom: "GUARDIAN",
           },
-        });
-
-        // Send notification to each guardian
-        await createAndSendNotification({
-          userId: link.guardianId,
+        }),
+        createAndSendNotification({
+          userId: link.guardianId!,
           roomId: room.id,
           channel: "SMS",
           encryptedPhone: link.guardianPhone,
@@ -98,23 +102,20 @@ export async function POST(request: NextRequest) {
               : `[긴급연결] 보호 대상자에게 긴급 상황이 발생했습니다. 즉시 확인하세요.`,
             roomId: room.id,
           },
-        });
-      }
-    }
+        }),
+      ]);
 
-    // Add system message
-    const systemMsg = isDuress
-      ? "⚠️ 긴급 채팅방이 생성되었습니다. (듀레스 코드로 진입)"
-      : "🚨 긴급 채팅방이 생성되었습니다.";
-
-    await prisma.message.create({
-      data: {
-        roomId: room.id,
-        senderId: payload.victimId,
-        type: "SYSTEM",
-        contentEncrypted: encrypt(systemMsg),
-      },
-    });
+    await Promise.all([
+      prisma.message.create({
+        data: {
+          roomId: room.id,
+          senderId: payload.victimId,
+          type: "SYSTEM",
+          contentEncrypted: encrypt(systemMsg),
+        },
+      }),
+      ...guardianOps,
+    ]);
 
     // Set emergency cookie (does NOT overwrite main auth cookie)
     const authToken = signToken({

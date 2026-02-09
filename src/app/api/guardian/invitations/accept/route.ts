@@ -45,21 +45,20 @@ export async function POST(request: NextRequest) {
 
     const guardianId = result.user.id;
 
-    // Update invitation
-    await prisma.invitation.update({
-      where: { id: invitation.id },
-      data: { status: "ACCEPTED" },
-    });
-
-    // Find and update the matching guardian link
-    // Match by victimId and guardianPhone (encrypted)
-    const link = await prisma.guardianLink.findFirst({
-      where: {
-        victimId: invitation.victimId,
-        guardianPhone: invitation.guardianPhone,
-        status: "PENDING",
-      },
-    });
+    // Update invitation + find matching link in parallel (Rule 1.4: Promise.all)
+    const [, link] = await Promise.all([
+      prisma.invitation.update({
+        where: { id: invitation.id },
+        data: { status: "ACCEPTED" },
+      }),
+      prisma.guardianLink.findFirst({
+        where: {
+          victimId: invitation.victimId,
+          guardianPhone: invitation.guardianPhone,
+          status: "PENDING",
+        },
+      }),
+    ]);
 
     if (link) {
       await prisma.guardianLink.update({
