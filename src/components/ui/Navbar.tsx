@@ -12,12 +12,16 @@ interface UserInfo {
 }
 
 const TRANSPARENT_ROUTES = ["/", "/about"];
+const HIDDEN_ROUTES = ["/search"];
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<UserInfo | null>(null);
   const [checked, setChecked] = useState(false);
+
+  // Hide navbar entirely on disguised pages (e.g. /search)
+  if (HIDDEN_ROUTES.includes(pathname)) return null;
 
   const isTransparent = TRANSPARENT_ROUTES.includes(pathname);
   const logoColor = isTransparent
