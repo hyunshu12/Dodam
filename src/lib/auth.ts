@@ -49,11 +49,6 @@ export function verifyToken(token: string): TokenPayload | null {
  * Set auth token as httpOnly cookie
  */
 export async function setAuthCookie(token: string) {
-  // #region agent log
-  const decoded = verifyToken(token);
-  console.log('[DEBUG][H1,H3] setAuthCookie called:', JSON.stringify({userId:decoded?.userId,role:decoded?.role,purpose:decoded?.purpose}));
-  fetch('http://127.0.0.1:7242/ingest/e9b5dedd-462b-4e37-895a-5212b39b1c11',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auth.ts:setAuthCookie',message:'Setting auth cookie',data:{userId:decoded?.userId,role:decoded?.role,purpose:decoded?.purpose},timestamp:Date.now(),hypothesisId:'H1,H3'})}).catch(()=>{});
-  // #endregion
   const cookieStore = await cookies();
   cookieStore.set(TOKEN_COOKIE, token, {
     httpOnly: true,
@@ -77,11 +72,6 @@ export async function clearAuthCookie() {
  * Set emergency-only auth cookie (does NOT overwrite the main ec-token)
  */
 export async function setEmergencyCookie(token: string) {
-  // #region agent log
-  const decoded = verifyToken(token);
-  console.log('[DEBUG][FIX] setEmergencyCookie called:', JSON.stringify({userId:decoded?.userId,role:decoded?.role}));
-  fetch('http://127.0.0.1:7242/ingest/e9b5dedd-462b-4e37-895a-5212b39b1c11',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auth.ts:setEmergencyCookie',message:'Setting EMERGENCY cookie (not overwriting main)',data:{userId:decoded?.userId,role:decoded?.role},timestamp:Date.now(),hypothesisId:'FIX'})}).catch(()=>{});
-  // #endregion
   const cookieStore = await cookies();
   cookieStore.set(EMERGENCY_COOKIE, token, {
     httpOnly: true,
